@@ -24,44 +24,13 @@
       </span>
     </p>
 
-    <form class="filter-bar" @submit.prevent="reload">
-      <label v-for="field in filterFields" :key="field" class="filter-item">
-        <span>{{ field }}</span>
-        <input v-model="filters[field]" :placeholder="`按${field}检索`" />
-      </label>
-      <button class="btn" type="submit">查询</button>
-      <button class="btn ghost" type="button" @click="resetFilters">重置条件</button>
-    </form>
-
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th v-for="column in columns" :key="column">{{ column }}</th>
-          <th>当前状态</th>
-          <th>可执行动作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in rows" :key="String(row.id)">
-          <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
-          <td>{{ row.status }}</td>
-          <td class="row-actions">
-            <button
-              v-for="action in actions"
-              :key="action"
-              class="link"
-              type="button"
-              @click="runAction(action, row)"
-            >
-              {{ action }}
-            </button>
-          </td>
-        </tr>
-        <tr v-if="!rows.length">
-          <td :colspan="columns.length + 2" class="empty-state">暂无客舱清洁数据，可先登记清洁任务</td>
-        </tr>
-      </tbody>
-    </table>
+    <CabinCleanPanel
+      ref="panelRef"
+      source="客舱清洁清单"
+      title="客舱清洁清单"
+      :show-filters="true"
+      :show-export="true"
+    />
 
     <footer class="page-foot">
       <span>共 {{ total }} 条客舱清洁记录</span>
@@ -73,25 +42,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import {
-  downloadEntries,
-  listEntries,
-  moduleMeta,
-  runAction as applyAction,
-} from '@/api/local-service'
+import { downloadEntries, listEntries, moduleMeta } from '@/api/local-service'
+import CabinCleanPanel from '@/components/CabinCleanPanel.vue'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('cabin_clean')
-const columns = ["清洁编号", "关联航班", "清洁类型", "清洁班组", "计划开始", "实际完成", "清洁用时", "清洁状态"]
-const actions = ["开始清洁", "完成清洁", "安排复查"]
-const statuses = ["待清洁", "清洁中", "已完成", "需复查"]
-const stats = [{"label": "待清洁航班", "value": 0}, {"label": "清洁中航班", "value": 0}, {"label": "需复查航班", "value": 0}]
+const statuses = ['待清洁', '清洁中', '已完成', '需复查']
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
-const filters = ref<Record<string, string>>({})
-const filterFields = columns.slice(0, 3)
+const panelRef = ref<InstanceType<typeof CabinCleanPanel> | null>(null)
+
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -99,10 +61,11 @@ const statusSummary = computed(() =>
   })),
 )
 
-function resetFilters() {
-  filters.value = {}
-  reload()
-}
+const stats = computed(() => [
+  { label: '待清洁航班', value: rows.value.filter((row) => String(row.status) === '待清洁').length },
+  { label: '清洁中航班', value: rows.value.filter((row) => String(row.status) === '清洁中').length },
+  { label: '需复查航班', value: rows.value.filter((row) => String(row.status) === '需复查').length },
+])
 
 function exportRows() {
   downloadEntries(meta.key)
@@ -112,25 +75,17 @@ function openCreate() {
   errorMessage.value = '清洁任务登记入口尚未接入审批流'
 }
 
-function runAction(action: string, row: EntryRow) {
-  errorMessage.value = ''
-  const result = applyAction(meta.key, Number(row.id), action)
-  if (!result.ok) {
-    errorMessage.value = result.message
-    return
-  }
-  reload()
-}
-
 function reload() {
   errorMessage.value = ''
   try {
-    const payload = listEntries(meta.key, filters.value)
+    const payload = listEntries(meta.key)
     rows.value = payload.items
     total.value = payload.total
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '客舱清洁列表读取失败'
   }
+  // 共享面板内部也持有一份数据，动作后由它自行刷新；挂载后这里同步统计即可。
+  panelRef.value?.reload()
 }
 
 onMounted(reload)

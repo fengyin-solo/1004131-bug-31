@@ -67,6 +67,13 @@
       <span>共 {{ total }} 条过站监控记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
+
+    <CabinCleanPanel
+      source="过站监控-客舱清洁清单"
+      title="关联客舱清洁清单（过站监控入口）"
+      :show-filters="true"
+      :show-export="false"
+    />
   </section>
 </template>
 
@@ -79,6 +86,7 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import CabinCleanPanel from '@/components/CabinCleanPanel.vue'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('turnaround')
