@@ -89,6 +89,7 @@ export const MODULES: ModuleMeta[] = [
     actions: ["开始清洁", "完成清洁", "安排复查"],
     actionTargets: {"开始清洁": "清洁中", "完成清洁": "已完成", "安排复查": "需复查"},
     metrics: ["待清洁航班", "清洁中航班", "需复查航班"],
+    archivedStatuses: ["已完成"],
   },
   {
     key: "lavatory",
@@ -111,6 +112,7 @@ export const MODULES: ModuleMeta[] = [
     actions: ["开始除冰", "确认完成", "取消作业"],
     actionTargets: {"开始除冰": "作业中", "确认完成": "已完成", "取消作业": "已取消"},
     metrics: ["待除冰航班", "作业中航班", "已完成除冰"],
+    archivedStatuses: ["已完成", "已取消"],
   },
   {
     key: "pushback",
